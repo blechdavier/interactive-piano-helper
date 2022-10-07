@@ -4,7 +4,7 @@ import midi
 
 def main():
     pg.init()
-    screen = pg.display.set_mode((800, 600))
+    screen = pg.display.set_mode((800, 600), pg.HWSURFACE|pg.DOUBLEBUF|pg.RESIZABLE)
     pg.display.set_caption("Python Piano Helper")
     clock = pg.time.Clock()
     
@@ -20,7 +20,7 @@ def main():
         
         
     # create a surface to draw all the piano keys on
-    piano_surface = pg.Surface((800, 350))
+    piano_surface = pg.Surface((screen.get_width(), 350))
     # draw the white keys onto the surface
     white_key_container.draw(piano_surface)
     # draw the black keys onto the surface
@@ -37,7 +37,16 @@ def main():
         clock.tick(60)
         # check for events
         for e in pg.event.get():
-            if e.type == pg.QUIT:
+            if e.type == pg.KEYDOWN:
+                if e.key == pg.K_ESCAPE:
+                    running = False
+            elif e.type == pg.VIDEORESIZE:
+                screen = pg.display.set_mode(e.size, pg.HWSURFACE|pg.DOUBLEBUF|pg.RESIZABLE)
+                # recreate the surface and redraw the keys
+                piano_surface = pg.Surface((screen.get_width(), 350))
+                white_key_container.draw(piano_surface)
+                black_key_container.draw(piano_surface)
+            elif e.type == pg.QUIT:
                 running = False
                 pg.quit()
                 quit()
