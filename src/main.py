@@ -1,10 +1,11 @@
 import pygame as pg
 import midi
+import keyboard
 
 
 def main():
     pg.init()
-    screen = pg.display.set_mode((800, 600), pg.HWSURFACE|pg.DOUBLEBUF|pg.RESIZABLE)
+    screen = pg.display.set_mode((800, 600), pg.HWSURFACE | pg.DOUBLEBUF | pg.RESIZABLE)
     pg.display.set_caption("Python Piano Helper")
     clock = pg.time.Clock()
     
@@ -17,8 +18,7 @@ def main():
     keys = []
     for key_id in range(128):
         keys.append(midi.MidiKey(key_id, white_key_container, black_key_container))
-        
-        
+
     # create a surface to draw all the piano keys on
     piano_surface = pg.Surface((screen.get_width(), 350))
     # draw the white keys onto the surface
@@ -40,8 +40,17 @@ def main():
             if e.type == pg.KEYDOWN:
                 if e.key == pg.K_ESCAPE:
                     running = False
+                else:
+                    if pg.key.name(e.key) in keyboard.keys_to_midi:
+                        key_id = keyboard.keys_to_midi[pg.key.name(e.key)]
+                        keys[key_id].update_visuals(True)
+            elif e.type == pg.KEYUP:
+                print(pg.key.name(e.key))
+                if pg.key.name(e.key) in keyboard.keys_to_midi:
+                    key_id = keyboard.keys_to_midi[pg.key.name(e.key)]
+                    keys[key_id].update_visuals(False)
             elif e.type == pg.VIDEORESIZE:
-                screen = pg.display.set_mode(e.size, pg.HWSURFACE|pg.DOUBLEBUF|pg.RESIZABLE)
+                screen = pg.display.set_mode(e.size, pg.HWSURFACE | pg.DOUBLEBUF | pg.RESIZABLE)
                 # recreate the surface and redraw the keys
                 piano_surface = pg.Surface((screen.get_width(), 350))
                 white_key_container.draw(piano_surface)
@@ -50,6 +59,7 @@ def main():
                 running = False
                 pg.quit()
                 quit()
+
 
 if __name__ == "__main__":
     main()
