@@ -8,6 +8,6 @@ def get_samples(notes_dict, num_samples=256):
             for _ in range(num_samples)]
 
 
-def get_sin_oscillator(freq=55, amp=1, sample_rate=44100):
+def get_sin_oscillator(freq=440, amp=1, sample_rate=44100):
     increment = (2 * math.pi * freq) / sample_rate
     return (math.sin(v) * amp for v in itertools.count(start=0, step=increment))

@@ -50,7 +50,6 @@ class MidiKey:
 
     def update_visuals(self, is_pressed):
         """Update the visuals of the key based on whether it is being pressed or not."""
-        print("updating key " + self.key_name[0] + " to pressed state: " + str(is_pressed))
         if is_pressed:
             self.sprite.image.fill("#ff0000")
         else:
