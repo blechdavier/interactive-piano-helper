@@ -21,7 +21,7 @@ Interactive Piano Helper is an interactive piano made with python and pygame, de
 ### UX
 
 - [x] Automatic key signature detection and display
-- [ ] Slider to change BPM
+- [ ] Buttons to choose which beat to play with
 
 ### Sound
 
