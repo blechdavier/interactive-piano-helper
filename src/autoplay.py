@@ -7,7 +7,7 @@ def find_key_signature(previous_notes, key_signature_table):
         for j in range(0, 24):
             key_signature_weights[j] += key_signature_table[j][i % 12]
 
-    return key_signature_weights.index(max(key_signature_weights))  # unoptimized
+    return key_signature_weights.index(max(key_signature_weights))  # not optimized
 
 
 def get_key_signature_table():
@@ -29,4 +29,3 @@ def get_key_signature_table():
         key_signature_table[i][(i + 8) % 12] = 0.5
         key_signature_table[i][(i + 10) % 12] = 1
     return key_signature_table
-
