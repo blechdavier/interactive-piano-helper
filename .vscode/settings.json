@@ -3,6 +3,7 @@
     "autoplay",
     "blit",
     "DOUBLEBUF",
+    "fract",
     "FULLSCREEN",
     "HWSURFACE",
     "KEYDOWN",

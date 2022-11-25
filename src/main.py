@@ -16,8 +16,6 @@ def main():
 
     bpm = 103
 
-    note_rects = []
-
     pg.init()
     screen = pg.display.set_mode(
         (2000, 600), pg.HWSURFACE | pg.DOUBLEBUF | pg.RESIZABLE
@@ -39,6 +37,12 @@ def main():
     keys = []
     for key_id in range(128):
         keys.append(midi.MidiKey(key_id, white_key_container, black_key_container))
+
+    # Create a list for the note visuals
+    note_rects = []
+
+    # create a list for the particles
+    particles = []
 
     # create a surface to draw all the piano keys on
     piano_surface = pg.Surface((screen.get_width(), 350))
@@ -115,12 +119,28 @@ def main():
             ):
                 print("removed")
                 note_rects.remove(note_rect)
+
+        # prune the particles if they're dead
+        for particle in particles:
+            if time.time() > particle.death_time:
+                particles.remove(particle)
+
         # render note rectangles
         for note_rect in note_rects:
+            # add new particles from the rectangles
+            particles.extend(note_rect.create_particles(screen.get_height() - 230))
             screen.blit(
                 note_rect.get_sprite(screen.get_height() - 230).image,
                 note_rect.get_sprite(screen.get_height() - 230).rect,
             )
+
+        # particles
+        for particle in particles:
+            # update particles
+            particle.update()
+            # draw particles
+            screen.blit(particle.get_sprite().image, particle.sprite.rect)
+
         # update the display
         pg.display.update()
         # limit the framerate to 60 fps

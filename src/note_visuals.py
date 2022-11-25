@@ -1,4 +1,5 @@
 from math import floor
+from random import random
 from time import time
 
 import pygame as pg
@@ -41,4 +42,58 @@ class NoteRect:
         )
         self.sprite.rect.y = init_y - (time() - self.time_pressed) * 100
 
+        return self.sprite
+
+    def create_particles(self, init_y: float):
+        particles = []
+
+        (x, y, w, h) = self.get_sprite(init_y).rect
+
+        for _ in range(randomly_to_int(w * h / 10000)):
+            particles.append(
+                Particle(
+                    x + random() * w, y + random() * h, "#00ff00", 0.5 + random() * 0.5
+                )
+            )
+
+        return particles
+
+
+def randomly_to_int(v: float):
+    if random() > v - floor(v):
+        return floor(v)
+    else:
+        return floor(v) + 1
+
+
+class Particle:
+    x: float
+    y: float
+    xv: float
+    yv: float
+    color: str
+    death_time: float
+    sprite: pg.sprite.Sprite
+
+    def __init__(self, x: float, y: float, color: str, life: float):
+        self.x = x - 5
+        self.y = y - 5
+        self.xv = random() - 0.5
+        self.yv = random() - 0.5
+        self.color = color
+        self.death_time = time() + life
+        self.sprite = pg.sprite.Sprite()
+        self.sprite.image = pg.Surface((10, 10))
+        self.sprite.image.fill(self.color)
+        self.sprite.rect = self.sprite.image.get_rect()
+        self.sprite.rect.x = self.x
+        self.sprite.rect.y = self.y
+
+    def update(self):
+        self.x += self.xv
+        self.y += self.yv
+
+    def get_sprite(self):
+        self.sprite.rect.x = self.x
+        self.sprite.rect.y = self.y
         return self.sprite
