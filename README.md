@@ -7,7 +7,7 @@ Interactive Piano Helper is an interactive piano made with python and pygame, de
 ### Visualization
 
 - [x] Piano keys change color when you press them
-- [ ] Note rectangles come up out of the keys when they're being pressed
+- [x] Note rectangles come up out of the keys when they're being pressed
   - This will be similar to https://www.visualmusicdesign.com/, but with less fancy effects
 - [x] Downbeats make the screen flash slightly to help keep tempo without a metronome
 
