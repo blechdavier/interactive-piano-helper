@@ -33,7 +33,7 @@ class PianoKey(Renderable):
         self._note = note
         if self.is_white():
             surface = Surface((50, 230))
-            surface.fill((randint(0, 255), 255, 255))
+            surface.fill((255, 255, 255))
         else:
             surface = Surface((37.5, 142.5))
             surface.fill((0, 0, 0))
