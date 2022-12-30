@@ -1,17 +1,25 @@
+from csv import reader
+from math import floor
+from os import path
+
+from pygame import K_LEFT, K_RIGHT, KEYDOWN, KEYUP, MOUSEWHEEL
+
 from dev import todo
 from rendering import PianoKey
 from synth import SquareSynth
-from pygame import KEYDOWN
-from csv import reader
-from os import path
 
 
 class App:
+    COLOR_PALETTE = {
+        "background": (255, 235, 59),
+    }
+
     def __init__(self):
-        self._piano = Piano(SquareSynth())
+        self._piano = Piano(124, SquareSynth())
         self._composer = Composer()
 
     def render(self, screen):
+        screen.fill(self.COLOR_PALETTE["background"])
         self._piano.render(screen)
 
     def play(self, note):
@@ -23,16 +31,25 @@ class App:
 
     def process_event(self, event):
         if event.type == KEYDOWN:
-            self._piano.play_from_qwerty(event.unicode)
+            self._piano.play_from_qwerty(event.unicode.lower())
+            if event.key == K_RIGHT:
+                self._piano.scroll_horiz(50)
+            elif event.key == K_LEFT:
+                self._piano.scroll_horiz(-50)
+        elif event.type == KEYUP:
+            self._piano.release_from_qwerty(event.unicode.lower())
+        elif event.type == MOUSEWHEEL:
+            self._piano.scroll_horiz(event.x * -10)
 
 
 class Piano:
     """A piano is a collection of piano keys and a synthesizer."""
 
-    def __init__(self, synthesizer):
+    def __init__(self, length, synthesizer):
         # initialize 88 piano keys
-        self._keys = []
-        for i in range(88):
+        self._keys: list[PianoKey] = []
+        self._horizontal_scroll = 0.0
+        for i in range(length):
             self._keys.append(PianoKey(i))
         self._synthesizer = synthesizer
         # load dictionary from file
@@ -42,10 +59,19 @@ class Piano:
             mode="r",
         ) as f:
             r = reader(f)
-            self._qwerty_to_midi = {rows[0]: rows[1] for rows in r}
-            print(self._qwerty_to_midi)
+            self._qwerty_to_midi = {rows[0]: int(rows[1]) for rows in r}
+
+    def __str__(self):
+        return len(self._keys) + " Key Piano"
 
     def render(self, screen):
+        # update horizontal position before rendering
+        if self._horizontal_scroll > 0:
+            self.scroll_horiz(-self._horizontal_scroll / 20)
+        elif screen.get_width() - self.width - self._horizontal_scroll > 0:
+            self.scroll_horiz(
+                (screen.get_width() - self.width - self._horizontal_scroll) / 20
+            )
         # not optimized but keeps the code simple
         for key in self._keys:
             if key.is_white():
@@ -58,7 +84,28 @@ class Piano:
         self._synthesizer.play(note)
 
     def play_from_qwerty(self, key):
-        self._synthesizer.play(self._qwerty_to_midi[key])
+        if key in self._qwerty_to_midi:
+            self._keys[self._qwerty_to_midi[key]].press()
+        # self._synthesizer.play(self._qwerty_to_midi[key])\
+
+    def release_from_qwerty(self, key):
+        # self._synthesizer.release(self._qwerty_to_midi[key])
+        if key in self._qwerty_to_midi:
+            self._keys[self._qwerty_to_midi[key]].release()
+
+    def scroll_horiz(self, amount):
+        self._horizontal_scroll += amount
+        for key in self._keys:
+            key.scroll_horiz(amount)
+
+    @property
+    def width(self) -> float:
+        return (
+            floor(len(self._keys) / 12) * 7 * 50
+            + [0, 50, 87.5, 100, 137.5, 150, 200, 237.5, 250, 287.5, 300, 337.5][
+                len(self._keys) % 12
+            ]
+        )
 
 
 class Composer:

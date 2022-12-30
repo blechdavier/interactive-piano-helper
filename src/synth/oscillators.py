@@ -1,6 +1,6 @@
 # blatantly copied from https://python.plainenglish.io/making-a-synth-with-python-oscillators-2cb8e68e9c3b#e334
 from abc import ABC, abstractmethod
-from math import floor, sin, pi
+from math import floor, pi, sin
 
 
 class Oscillator(ABC):

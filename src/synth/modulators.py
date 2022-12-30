@@ -1,5 +1,6 @@
 from itertools import count
 
+
 # excluding some slight modifications this class is from https://python.plainenglish.io/build-your-own-python-synthesizer-part-2-66396f6dad81
 class ADSREnvelope:
     def __init__(
