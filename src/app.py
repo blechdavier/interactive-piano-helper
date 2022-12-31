@@ -4,22 +4,19 @@ from os import path
 
 from pygame import K_LEFT, K_RIGHT, KEYDOWN, KEYUP, MOUSEWHEEL
 
+import store
 from dev import todo
 from rendering import PianoKey
 from synth import SquareSynth
 
 
 class App:
-    COLOR_PALETTE = {
-        "background": (255, 235, 59),
-    }
-
     def __init__(self):
         self._piano = Piano(124, SquareSynth())
         self._composer = Composer()
 
     def render(self, screen):
-        screen.fill(self.COLOR_PALETTE["background"])
+        screen.fill(store.COLOR_PALETTE["background"])
         self._piano.render(screen)
 
     def play(self, note):

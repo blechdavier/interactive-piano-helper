@@ -13,10 +13,12 @@ from pygame import image
 
 from app import App
 
+import store
+
 
 def main():
     # initialize screen
-    screen = display.set_mode((800, 600), RESIZABLE | HWSURFACE | DOUBLEBUF)
+    store.screen = display.set_mode((800, 600), RESIZABLE | HWSURFACE | DOUBLEBUF)
     display.set_caption("Interactive Piano Helper")
     display.set_icon(image.load("assets/textures/icon.png"))
     fullscreen = False
@@ -27,7 +29,7 @@ def main():
     app = App()
     # main loop
     while running:
-        app.render(screen)
+        app.render(store.screen)
         display.flip()
         # process events
         for event in ev.get():
@@ -38,12 +40,12 @@ def main():
             if event.type == KEYDOWN and event.key == K_F11:
                 fullscreen = not fullscreen
                 if fullscreen:
-                    prev_size = screen.get_size()
-                    screen = display.set_mode(
+                    prev_size = store.screen.get_size()
+                    store.screen = display.set_mode(
                         (0, 0), FULLSCREEN | HWSURFACE | DOUBLEBUF
                     )
                 else:
-                    screen = display.set_mode(
+                    store.screen = display.set_mode(
                         prev_size, RESIZABLE | HWSURFACE | DOUBLEBUF
                     )
 

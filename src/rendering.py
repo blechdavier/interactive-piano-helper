@@ -4,6 +4,8 @@ from time import time
 
 from pygame import Surface
 
+import store
+
 
 class Renderable:
     """A class that represents a renderable object. It has a position, a surface, and a sticky coordinate system."""
@@ -11,7 +13,7 @@ class Renderable:
     # x and y are the coordinates of the top left corner of the sprite
     _x: float
     _y: float
-    # sticky coords are 0-1, 0 being the left/top and 1 being the right/bottom of the screen at whatever size it is
+    # sticky coords are 0-1, 0 being the left/top and 1 being the right/bottom of the screen. They are used to make the renderable stick to the center or edges of the screen
     _sticky_x: float
     _sticky_y: float
     # the surface stores the image data for the renderable
@@ -134,7 +136,6 @@ class NoteBar(Renderable):
                 else:
                     self._surface = Surface((37.5, height))
                 # calculate the color of the note bar based on the velocity
-                print(self._velocity * 2)
                 self._surface.fill((255, 0, 0))
                 self._surface.set_alpha(self._velocity * 2)
                 self._has_static_surface = True
@@ -157,11 +158,6 @@ class NoteBar(Renderable):
 class PianoKey(Renderable):
     """A piano key is a renderable that has a note associated with it."""
 
-    COLOR_PALETTE = {
-        "dark_key": (255, 89, 22),
-        "light_key": (255, 173, 54),
-        "pressed_key": (255, 61, 0),
-    }
     _children: list[NoteBar]
 
     def __init__(self, note):
@@ -172,9 +168,9 @@ class PianoKey(Renderable):
             self._surface = Surface((37.5, 142.5))
         # fill the surface with white or black, depending on the note
         if self.is_white():
-            self._surface.fill(self.COLOR_PALETTE["light_key"])
+            self._surface.fill(store.COLOR_PALETTE["light_key"])
         else:
-            self._surface.fill(self.COLOR_PALETTE["dark_key"])
+            self._surface.fill(store.COLOR_PALETTE["dark_key"])
         offsets = [0, 0.625, 1, 1.625, 2, 3, 3.625, 4, 4.625, 5, 5.625, 6]
         super().__init__(
             floor(note / 12) * 350 + offsets[note % 12] * 50,
@@ -192,16 +188,16 @@ class PianoKey(Renderable):
 
     def press(self):
         if self.is_white():
-            self._surface.fill(self.COLOR_PALETTE["pressed_key"])
+            self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         else:
-            self._surface.fill(self.COLOR_PALETTE["pressed_key"])
+            self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         self.add_child(NoteBar(self._note, self._x, 100))
 
     def release(self):
         if self.is_white():
-            self._surface.fill(self.COLOR_PALETTE["light_key"])
+            self._surface.fill(store.COLOR_PALETTE["light_key"])
         else:
-            self._surface.fill(self.COLOR_PALETTE["dark_key"])
+            self._surface.fill(store.COLOR_PALETTE["dark_key"])
         self._children[-1].release()
 
     def scroll_horiz(self, amount):
