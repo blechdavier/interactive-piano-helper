@@ -1,5 +1,6 @@
 {
   "cSpell.words": [
+    "ADSR",
     "autoplay",
     "blit",
     "DOUBLEBUF",
@@ -11,6 +12,7 @@
     "pyaudio",
     "pygame",
     "rects",
+    "Renderable",
     "Shrikhand",
     "VIDEORESIZE"
   ]
