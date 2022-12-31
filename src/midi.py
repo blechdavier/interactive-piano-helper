@@ -16,7 +16,7 @@ class MidiDeviceProcessor:
         self._event_queue = event_queue
         self.find_device()
         while True:
-            sleep(0.05)
+            sleep(0.01)
             if self._midi_input.poll():
                 self._event_queue.put(self._midi_input.read(1))
 

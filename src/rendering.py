@@ -145,9 +145,11 @@ class NoteBar(Renderable):
         # render the note bar
         super().render(screen)
 
+    @property
     def is_white(self):
         return self._note % 12 not in [1, 3, 6, 8, 10]
 
+    @property
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
 
@@ -162,12 +164,12 @@ class PianoKey(Renderable):
 
     def __init__(self, note):
         self._note = note
-        if self.is_white():
+        if self.is_white:
             self._surface = Surface((50, 230))
         else:
             self._surface = Surface((37.5, 142.5))
         # fill the surface with white or black, depending on the note
-        if self.is_white():
+        if self.is_white:
             self._surface.fill(store.COLOR_PALETTE["light_key"])
         else:
             self._surface.fill(store.COLOR_PALETTE["dark_key"])
@@ -180,21 +182,23 @@ class PianoKey(Renderable):
             1,
         )
 
+    @property
     def is_white(self):
         return self._note % 12 not in [1, 3, 6, 8, 10]
 
+    @property
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
 
     def press(self, velocity=100):
-        if self.is_white():
+        if self.is_white:
             self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         else:
             self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         self.add_child(NoteBar(self._note, self._x, velocity))
 
     def release(self):
-        if self.is_white():
+        if self.is_white:
             self._surface.fill(store.COLOR_PALETTE["light_key"])
         else:
             self._surface.fill(store.COLOR_PALETTE["dark_key"])

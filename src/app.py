@@ -88,10 +88,10 @@ class Piano:
             )
         # not optimized but keeps the code simple so its fine
         for key in self._keys:
-            if key.is_white():
+            if key.is_white:
                 key.render(screen)
         for key in self._keys:
-            if key.is_black():
+            if key.is_black:
                 key.render(screen)
 
     def process_midi_events(self):
@@ -106,7 +106,6 @@ class Piano:
             # TODO: maybe add support for other midi events that could be pretty neat
 
     def play_from_midi(self, note, velocity):
-        print("Midi note: " + str(note) + " Velocity: " + str(velocity))
         self._keys[note].press(velocity)
 
     def release_from_midi(self, note):
