@@ -15,6 +15,8 @@ class MidiDeviceProcessor:
         self._midi_input = None
         self._event_queue = event_queue
         self.find_device()
+        if self._midi_input is None:
+            return
         while True:
             sleep(0.01)
             if self._midi_input.poll():
