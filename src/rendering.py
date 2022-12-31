@@ -186,12 +186,12 @@ class PianoKey(Renderable):
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
 
-    def press(self):
+    def press(self, velocity=100):
         if self.is_white():
             self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         else:
             self._surface.fill(store.COLOR_PALETTE["pressed_key"])
-        self.add_child(NoteBar(self._note, self._x, 100))
+        self.add_child(NoteBar(self._note, self._x, velocity))
 
     def release(self):
         if self.is_white():

@@ -10,6 +10,7 @@ from pygame import (
 )
 from pygame import event as ev
 from pygame import image
+from pygame.time import Clock
 
 from app import App
 
@@ -27,8 +28,11 @@ def main():
     prev_size = (800, 600)
     # initialize app context
     app = App()
+    # clock to limit framerate
+    clock = Clock()
     # main loop
     while running:
+        clock.tick(60)
         app.render(store.screen)
         display.flip()
         # process events

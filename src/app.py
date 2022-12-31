@@ -8,6 +8,9 @@ import store
 from dev import todo
 from rendering import PianoKey
 from synth import SquareSynth
+from midi import MidiDeviceProcessor
+from queue import Queue
+from threading import Thread
 
 
 class App:
@@ -37,6 +40,9 @@ class App:
             self._piano.release_from_qwerty(event.unicode.lower())
         elif event.type == MOUSEWHEEL:
             self._piano.scroll_horiz(event.x * -10)
+        else:
+            pass
+            # print("Unhandled event: " + str(event))
 
 
 class Piano:
@@ -57,11 +63,22 @@ class Piano:
         ) as f:
             r = reader(f)
             self._qwerty_to_midi = {rows[0]: int(rows[1]) for rows in r}
+        # poll for midi events on a separate thread and place them in a queue to process them on the main thread
+        # apparently queues are thread safe src=https://www.geeksforgeeks.org/python-communicating-between-threads-set-1/
+        self._midi_event_queue = Queue()
+        Thread(
+            target=MidiDeviceProcessor,
+            args=(self._midi_event_queue,),
+            name="MidiProcessorThread",
+            daemon=True,
+        ).start()
 
     def __str__(self):
         return len(self._keys) + " Key Piano"
 
     def render(self, screen):
+        # process midi events on the main thread
+        self.process_midi_events()
         # update horizontal position before rendering
         if self._horizontal_scroll > 0:
             self.scroll_horiz(-self._horizontal_scroll / 20)
@@ -69,7 +86,7 @@ class Piano:
             self.scroll_horiz(
                 (screen.get_width() - self.width - self._horizontal_scroll) / 20
             )
-        # not optimized but keeps the code simple
+        # not optimized but keeps the code simple so its fine
         for key in self._keys:
             if key.is_white():
                 key.render(screen)
@@ -77,8 +94,23 @@ class Piano:
             if key.is_black():
                 key.render(screen)
 
-    def play(self, note):
-        self._synthesizer.play(note)
+    def process_midi_events(self):
+        while not self._midi_event_queue.empty():
+            event = self._midi_event_queue.get()
+            event = event[0][0]
+            # this goofy datatype isn't my fault
+            if event[0] == 144:
+                self.play_from_midi(event[1], event[2])
+            elif event[0] == 128:
+                self.release_from_midi(event[1])
+            # TODO: maybe add support for other midi events that could be pretty neat
+
+    def play_from_midi(self, note, velocity):
+        print("Midi note: " + str(note) + " Velocity: " + str(velocity))
+        self._keys[note].press(velocity)
+
+    def release_from_midi(self, note):
+        self._keys[note].release()
 
     def play_from_qwerty(self, key):
         if key in self._qwerty_to_midi:
