@@ -1,5 +1,5 @@
-from math import floor
-from random import randint
+from math import ceil, floor
+from random import randint, random
 from time import time
 
 from pygame import Surface
@@ -93,6 +93,32 @@ class Renderable:
         self._children.remove(child)
 
 
+class Particle(Renderable):
+    def __init__(self, x, y, velocity=(0, 0), lifetime=5, size=5, color=(255, 0, 255)):
+        self._velocity = velocity
+        self._lifetime = lifetime
+        self._size = size
+        self._color = color
+        self._time_when_created = time()
+        self._surface = Surface((size, size))
+        self._surface.fill(color)
+        super().__init__(x, y, self._surface, 0, 1)
+
+    def render(self, screen):
+        age = time() - self._time_when_created
+        if age > self._lifetime:
+            # .remove isn't that performant for this use case, but I'll fix it if it becomes a problem
+            store.particles.remove(self)
+            return
+        # fade out at the very end of the lifetime
+        if age > self._lifetime * 0.75:
+            self._surface.set_alpha(255 * (1 - age / self._lifetime))
+        super().render(screen)
+        self._x += self._velocity[0]
+        self._y += self._velocity[1]
+        self._velocity = (self._velocity[0], self._velocity[1] + 0.2)
+
+
 class NoteBar(Renderable):
     """A moving bar that shows a note that has been played. These are children of the `PianoKey` class."""
 
@@ -114,8 +140,11 @@ class NoteBar(Renderable):
         self._release_time = time()
 
     def render(self, screen):
+        # update y position (the 230 pixel offset makes the note bar appear to be above the piano, but rounding makes 229 look better)
+        self._y = -229 - (time() - self._time_when_played) * self._scroll_speed
+
+        # calculate the height of the note bar based on if it has been released or not
         if not self._has_static_surface:
-            # calculate the height of the note bar based on if it has been released or not
             if self._release_time is None:
                 height = (time() - self._time_when_played) * self._scroll_speed
                 # create a new surface with the calculated height
@@ -126,6 +155,21 @@ class NoteBar(Renderable):
                 # calculate the color of the note bar based on the velocity
                 self._surface.fill((255, 0, 0))
                 self._surface.set_alpha(self._velocity * 2)
+                # make some particles
+                for _ in range(ceil(self._velocity / 127 * 5)):
+                    store.particles.append(
+                        Particle(
+                            self._x + random() * self._surface.get_width(),
+                            self._y + self._surface.get_height(),
+                            (
+                                randint(-4, 4) * self._velocity / 127,
+                                randint(-8, -2) * self._velocity / 127,
+                            ),
+                            0.5,
+                            3,
+                            (255, 0, 0),
+                        )
+                    )
             else:
                 # this is the case where the note has been released for the first frame
                 height = (
@@ -139,8 +183,6 @@ class NoteBar(Renderable):
                 self._surface.fill((255, 0, 0))
                 self._surface.set_alpha(self._velocity * 2)
                 self._has_static_surface = True
-        # update y position (the 230 pixel offset makes the note bar appear to be above the piano, but rounding makes 229 look better)
-        self._y = -229 - (time() - self._time_when_played) * self._scroll_speed
 
         # render the note bar
         super().render(screen)
@@ -190,7 +232,7 @@ class PianoKey(Renderable):
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
 
-    def press(self, velocity=100):
+    def press(self, velocity=80):
         if self.is_white:
             self._surface.fill(store.COLOR_PALETTE["pressed_key"])
         else:

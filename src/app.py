@@ -21,6 +21,8 @@ class App:
     def render(self, screen):
         screen.fill(store.COLOR_PALETTE["background"])
         self._piano.render(screen)
+        for particle in store.particles:
+            particle.render(screen)
 
     def play(self, note):
         self._composer.play(note)

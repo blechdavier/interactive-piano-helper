@@ -10,3 +10,6 @@ screen = None
 """Hold a reference to the screen so that we can access it from anywhere."""
 
 scroll_offset = {"x": 0, "y": 0}
+
+# the particles that are currently being rendered (used for the note bar)
+particles = []
