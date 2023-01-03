@@ -13,3 +13,5 @@ scroll_offset = {"x": 0, "y": 0}
 
 # the particles that are currently being rendered (used for the note bar)
 particles = []
+
+app = None

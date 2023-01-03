@@ -13,40 +13,6 @@ from queue import Queue
 from threading import Thread
 
 
-class App:
-    def __init__(self):
-        self._piano = Piano(124, SquareSynth())
-        self._composer = Composer()
-
-    def render(self, screen):
-        screen.fill(store.COLOR_PALETTE["background"])
-        self._piano.render(screen)
-        for particle in store.particles:
-            particle.render(screen)
-
-    def play(self, note):
-        self._composer.play(note)
-        self._piano.play(note)
-
-    def start_audio(self):
-        todo()
-
-    def process_event(self, event):
-        if event.type == KEYDOWN:
-            self._piano.play_from_qwerty(event.unicode.lower())
-            if event.key == K_RIGHT:
-                self._piano.scroll_horiz(50)
-            elif event.key == K_LEFT:
-                self._piano.scroll_horiz(-50)
-        elif event.type == KEYUP:
-            self._piano.release_from_qwerty(event.unicode.lower())
-        elif event.type == MOUSEWHEEL:
-            self._piano.scroll_horiz(event.x * -10)
-        else:
-            pass
-            # print("Unhandled event: " + str(event))
-
-
 class Piano:
     """A piano is a collection of piano keys and a synthesizer."""
 
@@ -109,19 +75,23 @@ class Piano:
 
     def play_from_midi(self, note, velocity):
         self._keys[note].press(velocity)
+        store.app.composer.add_note(note)
 
     def release_from_midi(self, note):
         self._keys[note].release()
+        store.app.composer.remove_note(note)
 
     def play_from_qwerty(self, key):
         if key in self._qwerty_to_midi:
             self._keys[self._qwerty_to_midi[key]].press()
+            store.app.composer.add_note(self._qwerty_to_midi[key])
         # self._synthesizer.play(self._qwerty_to_midi[key])\
 
     def release_from_qwerty(self, key):
         # self._synthesizer.release(self._qwerty_to_midi[key])
         if key in self._qwerty_to_midi:
             self._keys[self._qwerty_to_midi[key]].release()
+            store.app.composer.remove_note(self._qwerty_to_midi[key])
 
     def scroll_horiz(self, amount):
         self._horizontal_scroll += amount
@@ -139,29 +109,29 @@ class Piano:
 
 
 class Composer:
-    """A composer contains information about the music being played and methods for composing music."""
+    """A composer contains information about the music being played and methods for generating music."""
 
     def __init__(self):
         self._notes = []
-        self._key_signature = KeySignature()
+        self._note_frequency = [0] * 12
 
     def add_note(self, note):
-        self._key_signature.add_note(note)
+        # add this not to the list of the notes that are currently being played
         self._notes.append(note)
 
-
-class KeySignature:
-    def __init__(self):
-        self._note_frequencies = [0] * 12
-
-    def add_note(self, note):
-        # old notes matter less
-        for note in self._note_frequencies:
-            note *= 0.9
+        # update the note frequency list
         # new notes matter more
-        self._note_frequencies[note % 12] += 1
+        self._note_frequency[note % 12] += 1
+        # old notes matter less
+        for i in range(12):
+            self._note_frequency[i] *= 0.9
 
-    def get_key(self) -> tuple[int, str]:
+    def remove_note(self, note):
+        print(self._note_frequency)
+        self._notes.remove(note)
+
+    @property
+    def key_sig(self) -> tuple[int, str]:
         key_sig = (0, "major")
 
         # loop through major keys and find the maximum weight for each key based on the notes played
@@ -179,3 +149,42 @@ class KeySignature:
         # TODO: minor keys
 
         return key_sig
+
+
+class App:
+    def __init__(self):
+        self._piano = Piano(124, SquareSynth())
+        self._composer = Composer()
+        store.app = self
+
+    def render(self, screen):
+        screen.fill(store.COLOR_PALETTE["background"])
+        self._piano.render(screen)
+        for particle in store.particles:
+            particle.render(screen)
+
+    def play(self, note):
+        self._composer.play(note)
+        self._piano.play(note)
+
+    def start_audio(self):
+        todo()
+
+    def process_event(self, event):
+        if event.type == KEYDOWN:
+            self._piano.play_from_qwerty(event.unicode.lower())
+            if event.key == K_RIGHT:
+                self._piano.scroll_horiz(50)
+            elif event.key == K_LEFT:
+                self._piano.scroll_horiz(-50)
+        elif event.type == KEYUP:
+            self._piano.release_from_qwerty(event.unicode.lower())
+        elif event.type == MOUSEWHEEL:
+            self._piano.scroll_horiz(event.x * -10)
+        else:
+            pass
+            # print("Unhandled event: " + str(event))
+
+    @property
+    def composer(self) -> Composer:
+        return self._composer
