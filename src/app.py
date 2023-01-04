@@ -1,16 +1,17 @@
 from csv import reader
 from math import floor
 from os import path
+from queue import Queue
+from threading import Thread
 
 from pygame import K_LEFT, K_RIGHT, KEYDOWN, KEYUP, MOUSEWHEEL
+from pygame import event as pygame_event
 
 import store
 from dev import todo
+from midi import MidiDeviceProcessor
 from rendering import PianoKey
 from synth import SquareSynth
-from midi import MidiDeviceProcessor
-from queue import Queue
-from threading import Thread
 
 
 class App:
@@ -31,7 +32,8 @@ class App:
     def start_audio(self):
         todo()
 
-    def process_event(self, event):
+    def process_event(self, event: pygame_event):
+        print(event)
         if event.type == KEYDOWN:
             self._piano.play_from_qwerty(event.unicode.lower())
             if event.key == K_RIGHT:
@@ -45,6 +47,26 @@ class App:
         else:
             pass
             # print("Unhandled event: " + str(event))
+
+    @property
+    def composer(self):
+        return self._composer
+
+
+class Note:
+    notes = [
+        ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
+        ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"],
+    ]
+
+    def __init__(self, note, velocity):
+        self._note = note
+        self._velocity = velocity
+
+    def __str__(self):
+        return self.notes[int(store.app.composer.get_sharp_mode())][
+            self._note % 12
+        ] + str(floor(self._note / 12) - 1)
 
 
 class Piano:
