@@ -9,14 +9,14 @@ from pygame import event as pygame_event
 
 import store
 from dev import todo
-from midi import MidiDeviceProcessor
+from midi import MidiDeviceProcessor, Note
 from rendering import PianoKey
-from synth import SquareSynth
+from synth import AudioManager, SynthManager
 
 
 class App:
     def __init__(self):
-        self._piano = Piano(124, SquareSynth())
+        self._piano = Piano(124)
         self._composer = Composer()
 
     def render(self, screen):
@@ -53,32 +53,30 @@ class App:
         return self._composer
 
 
-class Note:
-    notes = [
-        ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-        ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"],
-    ]
-
-    def __init__(self, note, velocity):
-        self._note = note
-        self._velocity = velocity
-
-    def __str__(self):
-        return self.notes[int(store.app.composer.get_sharp_mode())][
-            self._note % 12
-        ] + str(floor(self._note / 12) - 1)
-
-
 class Piano:
     """A piano is a collection of piano keys and a synthesizer."""
 
-    def __init__(self, length, synthesizer):
+    def __init__(self, length: int):
         # initialize 88 piano keys
         self._keys: list[PianoKey] = []
         self._horizontal_scroll = 0.0
         for i in range(length):
             self._keys.append(PianoKey(i))
-        self._synthesizer = synthesizer
+        self._synth_manager = SynthManager()
+        # create a new AudioManager to deal with sound processing if it doesn't already exist and a new thread to calculate audio samples
+        if store.audio_manager is None:
+            store.audio_manager = AudioManager()
+        if store.audio_thread is None:
+            print("Starting audio thread")
+            store.audio_thread = Thread(
+                target=store.audio_manager.start,
+                name="AudioThread",
+                daemon=True,
+            )
+            store.audio_thread.start()
+
+        # add the synth manager to the audio manager
+        store.audio_manager.add_synth_manager(self._synth_manager)
         # load dictionary from file
         # this is later used to map qwerty keys to notes
         with open(
@@ -129,25 +127,32 @@ class Piano:
                 self.release_from_midi(event[1])
             # TODO: maybe add support for other midi events that could be pretty neat
 
-    def play_from_midi(self, note, velocity):
+    def play_from_midi(self, note: int, velocity: int):
         self._keys[note].press(velocity)
         store.app.composer.add_note(note)
+        note = Note(note, velocity)
+        self._synth_manager.play(note)
 
-    def release_from_midi(self, note):
+    def release_from_midi(self, note: int):
         self._keys[note].release()
         store.app.composer.remove_note(note)
+        self._synth_manager.release(note)
 
     def play_from_qwerty(self, key):
         if key in self._qwerty_to_midi:
-            self._keys[self._qwerty_to_midi[key]].press()
-            store.app.composer.add_note(self._qwerty_to_midi[key])
-        # self._synthesizer.play(self._qwerty_to_midi[key])\
+            note: int = self._qwerty_to_midi[key]
+            self._keys[note].press()
+            store.app.composer.add_note(note)
+            note: Note = Note(note, 80)
+            self._synth_manager.play(note)
 
     def release_from_qwerty(self, key):
         # self._synthesizer.release(self._qwerty_to_midi[key])
         if key in self._qwerty_to_midi:
-            self._keys[self._qwerty_to_midi[key]].release()
-            store.app.composer.remove_note(self._qwerty_to_midi[key])
+            note: int = self._qwerty_to_midi[key]
+            self._keys[note].release()
+            store.app.composer.remove_note(note)
+            self._synth_manager.release(note)
 
     def scroll_horiz(self, amount):
         self._horizontal_scroll += amount
@@ -171,7 +176,7 @@ class Composer:
         self._notes = []
         self._note_frequency = [0] * 12
 
-    def add_note(self, note):
+    def add_note(self, note: int):
         # add this not to the list of the notes that are currently being played
         self._notes.append(note)
 
@@ -182,8 +187,7 @@ class Composer:
         for i in range(12):
             self._note_frequency[i] *= 0.9
 
-    def remove_note(self, note):
-        print(self._note_frequency)
+    def remove_note(self, note: int):
         self._notes.remove(note)
 
     @property
@@ -209,7 +213,7 @@ class Composer:
 
 class App:
     def __init__(self):
-        self._piano = Piano(124, SquareSynth())
+        self._piano = Piano(124)
         self._composer = Composer()
         store.app = self
 

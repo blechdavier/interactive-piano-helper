@@ -12,9 +12,8 @@ from pygame import event as ev
 from pygame import image
 from pygame.time import Clock
 
-from app import App
-
 import store
+from app import App
 
 
 def main():

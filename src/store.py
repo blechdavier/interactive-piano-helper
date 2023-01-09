@@ -15,3 +15,5 @@ scroll_offset = {"x": 0, "y": 0}
 particles = []
 
 app = None
+audio_manager = None
+audio_thread = None
