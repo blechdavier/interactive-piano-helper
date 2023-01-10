@@ -45,27 +45,33 @@ class SineSynth(SynthVoice):
 
 class SquareSynth(SynthVoice):
     def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = (
-                1 if sin(2 * pi * self._freq * i / self._sample_rate) > 0 else -1
-            )
+        samples = [
+            1
+            if sin(2 * pi * self._freq * (i + self._phase) / self._sample_rate) > 0
+            else -1
+            for i in range(self._sample_length)
+        ]
+        self._phase += self._sample_length
         return samples
 
 
 class SawSynth(SynthVoice):
     def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = 2 * (i / self._sample_rate * self._freq % 1) - 1
+        samples = [
+            2 * (self._freq * (i + self._phase) / self._sample_rate % 1 - 0.5)
+            for i in range(self._sample_length)
+        ]
+        self._phase += self._sample_length
         return samples
 
 
 class TriangleSynth(SynthVoice):
     def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = 2 * abs(2 * (i / self._sample_rate * self._freq % 1) - 1) - 1
+        samples = [
+            2 * abs(self._freq * (i + self._phase) / self._sample_rate % 1 - 0.5) - 1
+            for i in range(self._sample_length)
+        ]
+        self._phase += self._sample_length
         return samples
 
 
@@ -95,7 +101,7 @@ class Gain(Processor):
 
 
 class Compressor(Processor):
-    """This might not be how a compressor actually works; I'm not sure if the negative sample values work how they should honestly."""
+    """Makes loud sounds quieter above a certain threshold."""
 
     def __init__(self, threshold: float, ratio: float):
         self._threshold = threshold
@@ -109,49 +115,67 @@ class Compressor(Processor):
                     / abs(sample)
                     * (self._threshold + (abs(sample) - self._threshold) / self._ratio)
                 )
+        return samples
 
 
 class AdsrEnvelope(Processor):
-    """An envelope that can be used to control the gain of a synth voice. This is used for individual notes, not the synth voice as a whole."""
+    """An envelope that can be used to control the gain of a synth voice. This is used for individual notes, not the synth voice as a whole. [Read more about this.](https://en.wikipedia.org/wiki/Envelope_(music)#ADSR)"""
+
+    _sample_rate = 44100
 
     def __init__(self, attack: float, decay: float, sustain: float, release: float):
         self._attack = attack
         self._decay = decay
         self._sustain = sustain
         self._release = release
-        self._time = time()
-        self._released_time = None
-        self._value = 0
-
-    def update_value(self):
-        if time() - self._time < self._attack:
-            self._value = (time() - self._time) / self._attack
-        elif time() - self._time < self._attack + self._decay:
-            self._value = 1 - (time() - self._time - self._attack) / self._decay * (
-                1 - self._sustain
-            )
-        elif self._released_time is None:
-            self._value = self._sustain
-        elif time() - self._released_time < self._release:
-            self._value = (
-                self._sustain
-                - (time() - self._released_time) / self._release * self._sustain
-            )
-        else:
-            self._value = 0
+        self._released_counter = None
+        self._sample_counter = 0
 
     def release(self):
-        self._released_time = time()
+        self._released_counter = 0
 
     def process(self, samples: list):
-        return [sample * self._value for sample in samples]
+        return [sample * self.value for sample in samples]
 
     @property
     def is_dead(self):
         return (
-            self._released_time is not None
-            and time() - self._released_time > self._release
+            self._released_counter is not None
+            and self._released_counter > self._release * self._sample_rate
         )
+
+    @property
+    def action(self):
+        if self._released_counter is not None:
+            return "release"
+        if self._sample_counter < self._attack * self._sample_rate:
+            return "attack"
+        if self._sample_counter < (self._attack + self._decay) * self._sample_rate:
+            return "decay"
+        return "sustain"
+
+    @property
+    def value(self):
+        self._sample_counter += 1
+        if self.action == "attack":
+            # return the volume based on the amount of time that has passed since the attack started
+            return self._sample_counter / self._attack / self._sample_rate
+        if self.action == "decay":
+            # return the calculated volume based on the amount of time that has passed since the decay started
+            return 1 - (
+                self._sample_counter - self._attack * self._sample_rate
+            ) / self._decay / self._sample_rate * (1 - self._sustain)
+        if self.action == "release":
+            # increment the release counter and return the value of the sustain level minus the amount of time that has passed
+            self._released_counter += 1
+            return self._sustain - (
+                self._released_counter
+                / self._release
+                / self._sample_rate
+                * self._sustain
+            )
+        # otherwise, just return the sustain level
+        return self._sustain
 
 
 class SynthManager:
@@ -177,9 +201,12 @@ class SynthManager:
     def get_next_samples(self, sample_rate: int, length: int):
         while self._press_queue.qsize():
             note = self._press_queue.get()
-            self._notes.append((note, SineSynth(), AdsrEnvelope(0.1, 0.1, 0.5, 0.1)))
+            self._notes.append(
+                (note, TriangleSynth(), AdsrEnvelope(0.1, 0.1, 0.5, 0.1))
+            )
             self._notes[-1][1].play(note)
 
+        # FIXME bug with releasing notes where notes can get stuck as pressed
         while self._release_queue.qsize():
             note = self._release_queue.get()
             for i in range(len(self._notes)):
@@ -187,32 +214,29 @@ class SynthManager:
                     self._notes[i][2].release()
                     break
 
-        for i in range(len(self._notes)):
-            self._notes[i][2].update_value()
-            if self._notes[i][2].is_dead:
-                self._notes.pop(i)
-                # this is a bit of a hack, but it work for now
-                break
+        # remove dead notes
+        self._notes = [note for note in self._notes if not note[2].is_dead]
+
         samples = [0] * length
         for i in range(len(self._notes)):
-            self._notes[i][2].update_value()
             note_samples = self._notes[i][1].get_next_samples()
             note_samples = self._notes[i][2].process(note_samples)
-            # this is a goofy way to add two arrays, there's probably a better way
             samples = [samples[i] + note_samples[i] for i in range(length)]
-
         return samples
 
 
 class AudioManager:
+
+    _compressor = Compressor(0.5, 5)
+
     def __init__(self):
         self._sample_rate = 44100
         self._length = 256
         self._synth_managers = []
-        self._compressor = Compressor(0.5, 2)
+        self._max_sample = 0.0
         self._p = pyaudio.PyAudio()
         self._stream = self._p.open(
-            output=True, format=pyaudio.paFloat32, channels=1, rate=self._sample_rate
+            output=True, format=pyaudio.paInt16, channels=1, rate=self._sample_rate
         )
 
     def add_synth_manager(self, synth_manager: SynthManager):
@@ -223,9 +247,20 @@ class AudioManager:
         for synth in self._synth_managers:
             synth_samples = synth.get_next_samples(self._sample_rate, self._length)
             samples = [samples[i] + synth_samples[i] for i in range(self._length)]
+
+        # Global FX chain:
+        # compressor
+        samples = self._compressor.process(samples)
+        # dynamic limiter
+        samples = [min(max(sample, -5), 5) for sample in samples]
+
+        samples = [sample * 0.2 for sample in samples]
+
+        samples = [int(sample * 32767) for sample in samples]
+
         return samples
 
     def start(self):
         while True:
             # c = perf_counter()
-            self._stream.write(np.float32(self.get_next_samples()).tobytes())
+            self._stream.write(np.int16(self.get_next_samples()).tobytes())
