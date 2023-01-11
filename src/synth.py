@@ -172,18 +172,21 @@ class AdsrEnvelope(Processor):
         return value * self._amp
 
 
-class SynthManager:
+class InstrumentAudio:
     """A class that manages all the notes for a synth voice. This is semi-analogous to an instrument in a DAW."""
 
     # FIXME this datatype isn't very OOP of me
     _notes: list[(Note, SynthVoice, AdsrEnvelope)]
 
-    def __init__(self):
+    def __init__(self, synth_voice, envelope_values: tuple[float, float, float, float]):
         self._notes = []
         self._press_queue = Queue()
         self._release_queue = Queue()
+        self._synth_voice = synth_voice
+        self._envelope_values = envelope_values
 
     def play(self, note: Note):
+        print("playing", note)
         self._press_queue.put(note)
 
     def release(self, note: Note or int):
@@ -192,14 +195,20 @@ class SynthManager:
             note = Note.note
         self._release_queue.put(note)
 
+    def release_all(self):
+        for note in self._notes:
+            self._release_queue.put(note[0].note)
+
     def get_next_samples(self, length: int):
         while self._press_queue.qsize():
             note: Note = self._press_queue.get()
             self._notes.append(
                 (
                     note,
-                    SquareSynth(),
-                    AdsrEnvelope(0.1, 0.1, 0.5, 0.1, note._velocity / 127),
+                    (
+                        self._synth_voice
+                    )(),  # call the synth voice class to create a new instance
+                    AdsrEnvelope(*self._envelope_values, note.velocity / 127),
                 )
             )
             self._notes[-1][1].play(note)
@@ -210,7 +219,6 @@ class SynthManager:
             for i in range(len(self._notes)):
                 if self._notes[i][0].note == note:
                     self._notes[i][2].release()
-                    break
 
         # remove dead notes
         self._notes = [note for note in self._notes if not note[2].is_dead]
@@ -222,6 +230,10 @@ class SynthManager:
             samples = [samples[i] + note_samples[i] for i in range(length)]
         return samples
 
+    @property
+    def notes(self):
+        return self._notes
+
 
 class AudioManager:
 
@@ -230,7 +242,7 @@ class AudioManager:
     def __init__(self):
         self._sample_rate = 44100
         self._length = 256
-        self._synth_managers = []
+        self._instrument_audios = []
         self._max_sample = 0.0
         self._p = pyaudio.PyAudio()
         self._stream = self._p.open(
@@ -238,13 +250,13 @@ class AudioManager:
         )
         # self._waveform = []
 
-    def add_synth_manager(self, synth_manager: SynthManager):
-        self._synth_managers.append(synth_manager)
+    def add_instrument_audio(self, instrument_audio: InstrumentAudio):
+        self._instrument_audios.append(instrument_audio)
 
     def get_next_samples(self, count: int):
         samples = [0] * count
-        for synth in self._synth_managers:
-            synth: SynthManager
+        for synth in self._instrument_audios:
+            synth: InstrumentAudio
             synth_samples = synth.get_next_samples(count)
             samples = [samples[i] + synth_samples[i] for i in range(count)]
 
