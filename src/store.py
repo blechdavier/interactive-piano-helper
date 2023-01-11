@@ -1,8 +1,11 @@
 COLOR_PALETTE = {
-    "background": (255, 235, 59),
-    "dark_key": (255, 89, 22),
-    "light_key": (255, 173, 54),
-    "pressed_key": (255, 61, 0),
+    "background": (216, 220, 222),
+    "dark_key": (26, 77, 208),
+    "light_key": (255, 255, 255),
+    "pressed_light_key": (240, 244, 247),
+    "pressed_dark_key": (13, 39, 104),
+    "note_bar": (26, 77, 208),
+    "particle": (26, 77, 208),
 }
 """A dictionary of colors used in the application."""
 

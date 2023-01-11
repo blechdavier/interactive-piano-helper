@@ -94,7 +94,15 @@ class Renderable:
 
 
 class Particle(Renderable):
-    def __init__(self, x, y, velocity=(0, 0), lifetime=5, size=5, color=(255, 0, 255)):
+    def __init__(
+        self,
+        x,
+        y,
+        velocity=(0, 0),
+        lifetime=5,
+        size=5,
+        color=store.COLOR_PALETTE["particle"],
+    ):
         self._velocity = velocity
         self._lifetime = lifetime
         self._size = size
@@ -153,7 +161,7 @@ class NoteBar(Renderable):
                 else:
                     self._surface = Surface((37.5, height))
                 # calculate the color of the note bar based on the velocity
-                self._surface.fill((255, 0, 0))
+                self._surface.fill(store.COLOR_PALETTE["note_bar"])
                 self._surface.set_alpha(self._velocity * 2)
                 # make some particles
                 for _ in range(ceil(self._velocity / 127 * 5)):
@@ -167,7 +175,6 @@ class NoteBar(Renderable):
                             ),
                             0.5,
                             3,
-                            (255, 0, 0),
                         )
                     )
             else:
@@ -180,7 +187,7 @@ class NoteBar(Renderable):
                 else:
                     self._surface = Surface((37.5, height))
                 # calculate the color of the note bar based on the velocity
-                self._surface.fill((255, 0, 0))
+                self._surface.fill(store.COLOR_PALETTE["note_bar"])
                 self._surface.set_alpha(self._velocity * 2)
                 self._has_static_surface = True
 
@@ -234,9 +241,9 @@ class PianoKey(Renderable):
 
     def press(self, velocity=80):
         if self.is_white:
-            self._surface.fill(store.COLOR_PALETTE["pressed_key"])
+            self._surface.fill(store.COLOR_PALETTE["pressed_light_key"])
         else:
-            self._surface.fill(store.COLOR_PALETTE["pressed_key"])
+            self._surface.fill(store.COLOR_PALETTE["pressed_dark_key"])
         self.add_child(NoteBar(self._note, self._x, velocity))
 
     def release(self):

@@ -51,9 +51,7 @@ class Note:
         self._velocity = velocity
 
     def __str__(self):
-        return self.notes[int(store.app.composer.get_sharp_mode())][
-            self._note % 12
-        ] + str(floor(self._note / 12) - 1)
+        return self.notes[0][self._note % 12] + str(floor(self._note / 12) - 1)
 
     @property
     def freq(self) -> float:
@@ -63,3 +61,7 @@ class Note:
     @property
     def note(self):
         return self._note
+
+    @property
+    def velocity(self):
+        return self._velocity

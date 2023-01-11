@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from math import pi, sin
 from queue import Queue
 from random import random
-from time import perf_counter, time
+from time import perf_counter, sleep, time
 
 import numpy as np
 import pyaudio
@@ -22,58 +22,64 @@ class SynthVoice(ABC):
         self._sample_length = sample_length
         self._phase = 0
 
-    def play(self, note: int or Note):
+    def play(self, note: int or Note or float):
+        # if the note is an integer, convert it to a Note object
         if note is int:
             note = Note(note, 0)
         # make a temporary instance of the note class to calculate the pitch of the note
         self._freq = note.freq
 
     @abstractmethod
-    def get_next_samples(self):
-        return np.array(0 in range(100))
+    def get_next_samples(self, length) -> list[float]:
+        return [0.0 in range(length)]
 
 
 class SineSynth(SynthVoice):
-    def get_next_samples(self):
+    def get_next_samples(self, length):
         samples = [
             sin(2 * pi * self._freq * (i + self._phase) / self._sample_rate)
-            for i in range(self._sample_length)
+            for i in range(length)
         ]
-        self._phase += self._sample_length
+        self._phase += length
         return samples
 
 
 class SquareSynth(SynthVoice):
-    def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = (
-                1 if sin(2 * pi * self._freq * i / self._sample_rate) > 0 else -1
-            )
+    def get_next_samples(self, length):
+        samples = [
+            1
+            if sin(2 * pi * self._freq * (i + self._phase) / self._sample_rate) > 0
+            else -1
+            for i in range(length)
+        ]
+        self._phase += length
         return samples
 
 
 class SawSynth(SynthVoice):
-    def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = 2 * (i / self._sample_rate * self._freq % 1) - 1
+    def get_next_samples(self, length):
+        samples = [
+            2 * (self._freq * (i + self._phase) / self._sample_rate % 1 - 0.5)
+            for i in range(length)
+        ]
+        self._phase += length
         return samples
 
 
 class TriangleSynth(SynthVoice):
-    def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = 2 * abs(2 * (i / self._sample_rate * self._freq % 1) - 1) - 1
+    def get_next_samples(self, length):
+        samples = [
+            2 * abs(self._freq * (i + self._phase) / self._sample_rate % 1 - 0.5) - 1
+            for i in range(length)
+        ]
+        self._phase += length
         return samples
 
 
 class NoiseSynth(SynthVoice):
-    def get_next_samples(self):
-        samples = [0] * self._sample_length
-        for i in range(self._sample_length):
-            samples[i] = random()
+    def get_next_samples(self, length):
+        samples = [random() * 2 - 1 for i in range(length)]
+        self._phase += length
         return samples
 
 
@@ -95,7 +101,7 @@ class Gain(Processor):
 
 
 class Compressor(Processor):
-    """This might not be how a compressor actually works; I'm not sure if the negative sample values work how they should honestly."""
+    """Makes loud sounds quieter above a certain threshold."""
 
     def __init__(self, threshold: float, ratio: float):
         self._threshold = threshold
@@ -109,63 +115,78 @@ class Compressor(Processor):
                     / abs(sample)
                     * (self._threshold + (abs(sample) - self._threshold) / self._ratio)
                 )
+        return samples
 
 
 class AdsrEnvelope(Processor):
-    """An envelope that can be used to control the gain of a synth voice. This is used for individual notes, not the synth voice as a whole."""
+    """An envelope that can be used to control the gain of a synth voice. This is used for individual notes, not the synth voice as a whole. [Read more about this.](https://en.wikipedia.org/wiki/Envelope_(music)#ADSR)"""
 
-    def __init__(self, attack: float, decay: float, sustain: float, release: float):
+    _sample_rate = 44100
+
+    def __init__(
+        self, attack: float, decay: float, sustain: float, release: float, amp: float
+    ):
         self._attack = attack
         self._decay = decay
         self._sustain = sustain
         self._release = release
-        self._time = time()
-        self._released_time = None
-        self._value = 0
-
-    def update_value(self):
-        if time() - self._time < self._attack:
-            self._value = (time() - self._time) / self._attack
-        elif time() - self._time < self._attack + self._decay:
-            self._value = 1 - (time() - self._time - self._attack) / self._decay * (
-                1 - self._sustain
-            )
-        elif self._released_time is None:
-            self._value = self._sustain
-        elif time() - self._released_time < self._release:
-            self._value = (
-                self._sustain
-                - (time() - self._released_time) / self._release * self._sustain
-            )
-        else:
-            self._value = 0
+        self._released_samples = None
+        self._samples = 0
+        self._amp = amp
 
     def release(self):
-        self._released_time = time()
+        self._released_samples = 0
 
     def process(self, samples: list):
-        return [sample * self._value for sample in samples]
+        return [sample * self.value for sample in samples]
 
     @property
     def is_dead(self):
         return (
-            self._released_time is not None
-            and time() - self._released_time > self._release
+            self._released_samples is not None
+            and self._released_samples >= self._release * self._sample_rate
         )
 
+    @property
+    def value(self):
+        # calculate the volume based on which section the envelope is in:
+        # release:
+        if self._released_samples is not None:
+            value = (
+                1 - self._released_samples / self._release / self._sample_rate
+            ) * self._sustain
+            value = max(0, value)
+            self._released_samples += 1
+        # attack:
+        elif self._samples < self._attack * self._sample_rate:
+            value = self._samples / self._attack / self._sample_rate
+        # decay:
+        elif self._samples < (self._attack + self._decay) * self._sample_rate:
+            value = 1 - (
+                self._samples - self._attack * self._sample_rate
+            ) / self._decay / self._sample_rate * (1 - self._sustain)
+        # sustain:
+        else:
+            value = self._sustain
+        self._samples += 1
+        return value * self._amp
 
-class SynthManager:
+
+class InstrumentAudio:
     """A class that manages all the notes for a synth voice. This is semi-analogous to an instrument in a DAW."""
 
     # FIXME this datatype isn't very OOP of me
     _notes: list[(Note, SynthVoice, AdsrEnvelope)]
 
-    def __init__(self):
+    def __init__(self, synth_voice, envelope_values: tuple[float, float, float, float]):
         self._notes = []
         self._press_queue = Queue()
         self._release_queue = Queue()
+        self._synth_voice = synth_voice
+        self._envelope_values = envelope_values
 
     def play(self, note: Note):
+        print("playing", note)
         self._press_queue.put(note)
 
     def release(self, note: Note or int):
@@ -174,58 +195,98 @@ class SynthManager:
             note = Note.note
         self._release_queue.put(note)
 
-    def get_next_samples(self, sample_rate: int, length: int):
+    def release_all(self):
+        for note in self._notes:
+            self._release_queue.put(note[0].note)
+
+    def get_next_samples(self, length: int):
         while self._press_queue.qsize():
-            note = self._press_queue.get()
-            self._notes.append((note, SineSynth(), AdsrEnvelope(0.1, 0.1, 0.5, 0.1)))
+            note: Note = self._press_queue.get()
+            self._notes.append(
+                (
+                    note,
+                    (
+                        self._synth_voice
+                    )(),  # call the synth voice class to create a new instance
+                    AdsrEnvelope(*self._envelope_values, note.velocity / 127),
+                )
+            )
             self._notes[-1][1].play(note)
 
+        # FIXME bug with releasing notes where notes can get stuck as pressed
         while self._release_queue.qsize():
             note = self._release_queue.get()
             for i in range(len(self._notes)):
                 if self._notes[i][0].note == note:
                     self._notes[i][2].release()
-                    break
 
-        for i in range(len(self._notes)):
-            self._notes[i][2].update_value()
-            if self._notes[i][2].is_dead:
-                self._notes.pop(i)
-                # this is a bit of a hack, but it work for now
-                break
+        # remove dead notes
+        self._notes = [note for note in self._notes if not note[2].is_dead]
+
         samples = [0] * length
         for i in range(len(self._notes)):
-            self._notes[i][2].update_value()
-            note_samples = self._notes[i][1].get_next_samples()
+            note_samples = self._notes[i][1].get_next_samples(length)
             note_samples = self._notes[i][2].process(note_samples)
-            # this is a goofy way to add two arrays, there's probably a better way
             samples = [samples[i] + note_samples[i] for i in range(length)]
-
         return samples
+
+    @property
+    def notes(self):
+        return self._notes
 
 
 class AudioManager:
+
+    _compressor = Compressor(0.5, 5)
+
     def __init__(self):
         self._sample_rate = 44100
         self._length = 256
-        self._synth_managers = []
-        self._compressor = Compressor(0.5, 2)
+        self._instrument_audios = []
+        self._max_sample = 0.0
         self._p = pyaudio.PyAudio()
         self._stream = self._p.open(
-            output=True, format=pyaudio.paFloat32, channels=1, rate=self._sample_rate
+            output=True, format=pyaudio.paInt16, channels=1, rate=self._sample_rate
         )
+        # self._waveform = []
 
-    def add_synth_manager(self, synth_manager: SynthManager):
-        self._synth_managers.append(synth_manager)
+    def add_instrument_audio(self, instrument_audio: InstrumentAudio):
+        self._instrument_audios.append(instrument_audio)
 
-    def get_next_samples(self):
-        samples = [0] * self._length
-        for synth in self._synth_managers:
-            synth_samples = synth.get_next_samples(self._sample_rate, self._length)
-            samples = [samples[i] + synth_samples[i] for i in range(self._length)]
+    def get_next_samples(self, count: int):
+        samples = [0] * count
+        for synth in self._instrument_audios:
+            synth: InstrumentAudio
+            synth_samples = synth.get_next_samples(count)
+            samples = [samples[i] + synth_samples[i] for i in range(count)]
+
+        # Global FX chain:
+        # compressor
+        samples = self._compressor.process(samples)
+        # dynamic limiter
+        samples = [min(max(sample, -5), 5) for sample in samples]
+
+        samples = [sample * 0.2 for sample in samples]
+
+        samples = [int(sample * 32767) for sample in samples]
+
         return samples
 
+    def callback(self, in_data, frame_count, time_info, status):
+        samples = self.get_next_samples(frame_count)
+        return (np.int16(samples).tobytes(), pyaudio.paContinue)
+
     def start(self):
-        while True:
-            # c = perf_counter()
-            self._stream.write(np.float32(self.get_next_samples()).tobytes())
+        self._stream = self._p.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=44100,
+            output=True,
+            stream_callback=self.callback,
+        )
+        while self._stream.is_active():
+            sleep(0.1)
+        print("audio stream closed")
+        self._stream.stop_stream()
+        self._stream.close()
+        self._p.terminate()
