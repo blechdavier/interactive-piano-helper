@@ -186,7 +186,6 @@ class InstrumentAudio:
         self._envelope_values = envelope_values
 
     def play(self, note: Note):
-        print("playing", note)
         self._press_queue.put(note)
 
     def release(self, note: Note or int):
@@ -284,9 +283,3 @@ class AudioManager:
             output=True,
             stream_callback=self.callback,
         )
-        while self._stream.is_active():
-            sleep(0.1)
-        print("audio stream closed")
-        self._stream.stop_stream()
-        self._stream.close()
-        self._p.terminate()

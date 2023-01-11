@@ -19,4 +19,3 @@ particles = []
 
 app = None
 audio_manager = None
-audio_thread = None

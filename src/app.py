@@ -4,7 +4,7 @@ from math import floor
 from os import path
 from queue import Queue
 from random import random
-from threading import Thread, Timer, Event
+from threading import Event, Thread, Timer
 from time import time
 
 from pygame import K_LEFT, K_RIGHT, KEYDOWN, KEYUP, MOUSEWHEEL
@@ -13,14 +13,7 @@ from pygame import event as pygame_event
 import store
 from midi import MidiDeviceProcessor, Note
 from rendering import PianoKey
-from synth import (
-    AudioManager,
-    NoiseSynth,
-    SineSynth,
-    InstrumentAudio,
-    SquareSynth,
-    TriangleSynth,
-)
+from synth import AudioManager, InstrumentAudio, NoiseSynth, SineSynth, SquareSynth
 
 
 class App:
@@ -69,17 +62,6 @@ class Piano:
         for i in range(length):
             self._keys.append(PianoKey(i))
         self._instrument_audio = InstrumentAudio(SquareSynth, (0.1, 0.1, 0.5, 0.3))
-        # create a new AudioManager to deal with sound processing if it doesn't already exist and a new thread to calculate audio samples
-        if store.audio_manager is None:
-            store.audio_manager = AudioManager()
-        if store.audio_thread is None:
-            print("Starting audio thread")
-            store.audio_thread = Thread(
-                target=store.audio_manager.start,
-                name="AudioThread",
-                daemon=True,
-            )
-            store.audio_thread.start()
 
         # add the synth manager to the audio manager
         store.audio_manager.add_instrument_audio(self._instrument_audio)
@@ -389,9 +371,13 @@ class AutoBass(AutoInstrument):
 
 class App:
     def __init__(self):
+        # create a new AudioManager to deal with sound processing if it doesn't already exist and a new thread to calculate audio samples
+        if store.audio_manager is None:
+            store.audio_manager = AudioManager()
         self._piano = Piano(124)
         self._composing_context = ComposingContext()
         store.app = self
+        store.audio_manager.start()
 
     def render(self, screen):
         screen.fill(store.COLOR_PALETTE["background"])
