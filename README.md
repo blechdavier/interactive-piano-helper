@@ -26,4 +26,4 @@ Interactive Piano Helper is an interactive piano made with python and pygame, de
 ### Sound
 
 - [x] Simple synthesizer
-- [ ] Note envelopes
+- [x] Note envelopes
