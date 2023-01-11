@@ -251,7 +251,8 @@ class PianoKey(Renderable):
             self._surface.fill(store.COLOR_PALETTE["light_key"])
         else:
             self._surface.fill(store.COLOR_PALETTE["dark_key"])
-        self._children[-1].release()
+        if len(self._children) > 0:
+            self._children[-1].release()
 
     def scroll_horiz(self, amount):
         self._x += amount
