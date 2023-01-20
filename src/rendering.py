@@ -202,7 +202,7 @@ class NoteBar(Renderable):
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
 
-    def scroll_horiz(self, amount):
+    def scroll_x(self, amount):
         self._x += amount
 
 
@@ -254,7 +254,7 @@ class PianoKey(Renderable):
         if len(self._children) > 0:
             self._children[-1].release()
 
-    def scroll_horiz(self, amount):
+    def scroll_x(self, amount):
         self._x += amount
         for child in self._children:
-            child.scroll_horiz(amount)
+            child.scroll_x(amount)

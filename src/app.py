@@ -15,41 +15,7 @@ from midi import MidiDeviceProcessor, Note
 from rendering import PianoKey
 from synth import AudioManager, InstrumentAudio, NoiseSynth, SineSynth, SquareSynth
 
-
-class App:
-    def __init__(self):
-        self._piano = Piano(124)
-        self._composing_context = ComposingContext()
-
-    def render(self, screen):
-        screen.fill(store.COLOR_PALETTE["background"])
-        self._piano.render(screen)
-        for particle in store.particles:
-            particle.render(screen)
-
-    def play(self, note):
-        self._composing_context.play(note)
-        self._piano.play(note)
-
-    def process_event(self, event: pygame_event):
-        print(event)
-        if event.type == KEYDOWN:
-            self._piano.play_from_qwerty(event.unicode.lower())
-            if event.key == K_RIGHT:
-                self._piano.scroll_horiz(50)
-            elif event.key == K_LEFT:
-                self._piano.scroll_horiz(-50)
-        elif event.type == KEYUP:
-            self._piano.release_from_qwerty(event.unicode.lower())
-        elif event.type == MOUSEWHEEL:
-            self._piano.scroll_horiz(event.x * -10)
-        else:
-            pass
-            # print("Unhandled event: " + str(event))
-
-    @property
-    def composing_context(self):
-        return self._composing_context
+from ui import UiBase, UiButton, UiText
 
 
 class Piano:
@@ -91,9 +57,9 @@ class Piano:
         self.process_midi_events()
         # update horizontal position before rendering
         if self._horizontal_scroll > 0:
-            self.scroll_horiz(-self._horizontal_scroll / 20)
+            self.scroll_x(-self._horizontal_scroll / 20)
         elif screen.get_width() - self.width - self._horizontal_scroll > 0:
-            self.scroll_horiz(
+            self.scroll_x(
                 (screen.get_width() - self.width - self._horizontal_scroll) / 20
             )
         # not optimized but keeps the code simple so its fine
@@ -140,10 +106,10 @@ class Piano:
             store.app.composing_context.remove_note(note)
             self._instrument_audio.release(note)
 
-    def scroll_horiz(self, amount):
+    def scroll_x(self, amount):
         self._horizontal_scroll += amount
         for key in self._keys:
-            key.scroll_horiz(amount)
+            key.scroll_x(amount)
 
     @property
     def width(self) -> float:
@@ -162,7 +128,7 @@ class ComposingContext:
         self._notes = []
         self._note_frequency = [0] * 12
         self._auto_instruments: list[AutoInstrument] = [
-            AutoDrums(),
+            # AutoDrums(),
             AutoChords(),
             AutoBass(),
         ]
@@ -374,16 +340,19 @@ class App:
         # create a new AudioManager to deal with sound processing if it doesn't already exist and a new thread to calculate audio samples
         if store.audio_manager is None:
             store.audio_manager = AudioManager()
-        self._piano = Piano(124)
+        self._piano = Piano(88)
         self._composing_context = ComposingContext()
         store.app = self
         store.audio_manager.start()
+        self._ui = [UiButton(0, 0, 0.5, 0.5, "Press any key to start composing")]
 
     def render(self, screen):
         screen.fill(store.COLOR_PALETTE["background"])
         self._piano.render(screen)
         for particle in store.particles:
             particle.render(screen)
+        for ui_element in self._ui:
+            ui_element.render(screen)
         self._composing_context.update()
 
     def play(self, note):
@@ -391,16 +360,18 @@ class App:
         self._piano.play(note)
 
     def process_event(self, event):
+        for ui_element in self._ui:
+            ui_element.process_event(event)
         if event.type == KEYDOWN:
             self._piano.play_from_qwerty(event.unicode.lower())
             if event.key == K_LEFT:
-                self._piano.scroll_horiz(50)
+                self._piano.scroll_x(50)
             elif event.key == K_RIGHT:
-                self._piano.scroll_horiz(-50)
+                self._piano.scroll_x(-50)
         elif event.type == KEYUP:
             self._piano.release_from_qwerty(event.unicode.lower())
         elif event.type == MOUSEWHEEL:
-            self._piano.scroll_horiz(event.x * -10)
+            self._piano.scroll_x(event.x * -10)
         else:
             pass
             # print("Unhandled event: " + str(event))

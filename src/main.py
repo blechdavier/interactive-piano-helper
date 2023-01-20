@@ -7,6 +7,7 @@ from pygame import (
     QUIT,
     RESIZABLE,
     display,
+    init
 )
 from pygame import event as ev
 from pygame import image
@@ -17,10 +18,12 @@ from app import App
 
 
 def main():
+    # initialize pygame
+    init()
     # initialize screen
     store.screen = display.set_mode((800, 600), RESIZABLE | HWSURFACE | DOUBLEBUF)
     display.set_caption("Interactive Piano Helper")
-    display.set_icon(image.load("assets/textures/icon.png"))
+    display.set_icon(image.load("assets/images/icon.png"))
     fullscreen = False
     running = True
     # used to store previous window size when switching to fullscreen

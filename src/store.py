@@ -10,7 +10,7 @@ COLOR_PALETTE = {
 """A dictionary of colors used in the application."""
 
 screen = None
-"""Hold a reference to the screen so that we can access it from anywhere."""
+"""Holds a global reference to the screen so that we can access it from anywhere."""
 
 scroll_offset = {"x": 0, "y": 0}
 
