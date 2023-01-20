@@ -4,7 +4,10 @@ COLOR_PALETTE = {
     "light_key": (255, 255, 255),
     "pressed_light_key": (240, 244, 247),
     "pressed_dark_key": (13, 39, 104),
-    "note_bar": (26, 77, 208),
+    "piano_note_bar": (26, 77, 208),
+    "drums_note_bar": (186, 12, 47),
+    "bass_note_bar": (13, 39, 104),
+    "chords_note_bar": (16, 150, 24),
     "particle": (26, 77, 208),
 }
 """A dictionary of colors used in the application."""

@@ -8,7 +8,8 @@ import store
 
 
 class UiBase(Renderable):
-    pass
+    def process_event(self, event: Event):
+        pass
 
 
 class UiText(UiBase):
@@ -21,22 +22,32 @@ class UiText(UiBase):
         text,
         font: str = "SofiaSans-Regular.ttf",
     ):
+        # draw the text to a surface
         self._text = text
-        self._surface = surface.Surface((1, 1))
-        self._surface.fill((255, 0, 255))
+        self._font = font
 
         font = Font(f"assets/fonts/{font}", 24)
 
-        text_surface = font.render(self._text, True, (0, 0, 0), (255, 255, 255))
-
-        self._surface = surface.Surface((text_surface.get_width(), text_surface.get_height()))
-        self._surface.fill((255, 0, 255))
-        self._surface.blit(text_surface, (0, 0))
+        self._surface = font.render(self._text, True, (0, 0, 0), (255, 255, 255))
 
         super().__init__(x, y, self._surface, sticky_x, sticky_y)
         
     def render(self, surface: surface.Surface):
         super().render(surface)
+    
+    @property
+    def text(self):
+        return self._text
+    
+    @text.setter
+    def text(self, value):
+        if self._text == value: # don't bother rendering if the text hasn't changed
+            return
+        # update the text
+        self._text = value
+        font = Font(f"assets/fonts/{self._font}", 24)
+        self._surface = font.render(self._text, True, (0, 0, 0), (255, 255, 255))
+        
         
         
 def default_callback():
