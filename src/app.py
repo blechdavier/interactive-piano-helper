@@ -241,6 +241,10 @@ class ComposingContext:
             for instrument in self._auto_instruments:
                 instrument.tick(self)
             self._ticks += 1
+            
+    def change_bpm(self, value: int):
+        self._bpm += value
+        store.app.ui[3].text = f"BPM: {self._bpm}"
 
     # a bunch of utility functions for making new auto instrument logic
     @property
@@ -399,8 +403,11 @@ class App:
         store.audio_manager.start()
         self._ui = [
             UiText(0, 0, 0, 0, "Press any key to start composing"), # Displays the key signature after the user has pressed a key
-            UiButton(0, -300, 0, 1, "<-", lambda: self._piano.scroll_x(50)),
-            UiButton(-25, -300, 1, 1, "->", lambda:self._piano.scroll_x(-50)),
+            UiButton(0, -300, 0, 1, "<-", lambda: self._piano.scroll_x(50)), # Scroll the piano left
+            UiButton(-25, -300, 1, 1, "->", lambda:self._piano.scroll_x(-50)), # Scroll the piano right
+            UiText(0, 25, 0, 0, f"BPM: {self.composing_context._bpm}"), # Displays the BPM
+            UiButton(0, 50, 0, 0, "BPM +", lambda: self._composing_context.change_bpm(1)), # Increase the BPM
+            UiButton(0, 75, 0, 0, "BPM -", lambda: self._composing_context.change_bpm(-1)), # Decrease the BPM
             ]
 
     def render(self, screen):
