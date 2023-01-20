@@ -135,7 +135,9 @@ class NoteBar(Renderable):
     _velocity: int
     """The velocity of the note, from 0 to 127."""
 
-    def __init__(self, note: int, x: float, velocity: int, instrument: str, scroll_speed=150):
+    def __init__(
+        self, note: int, x: float, velocity: int, instrument: str, scroll_speed=150
+    ):
         self._note = note
         self._scroll_speed = scroll_speed
         self._time_when_played = time()
@@ -162,7 +164,7 @@ class NoteBar(Renderable):
                 else:
                     self._surface = Surface((37.5, height))
                 # calculate the color of the note bar based on the velocity
-                self._surface.fill(store.COLOR_PALETTE[self._instrument+"_note_bar"])
+                self._surface.fill(store.COLOR_PALETTE[self._instrument + "_note_bar"])
                 self._surface.set_alpha(self._velocity * 2)
                 # make some particles
                 for _ in range(ceil(self._velocity / 127 * 5)):
@@ -176,7 +178,7 @@ class NoteBar(Renderable):
                             ),
                             0.5,
                             3,
-                            store.COLOR_PALETTE[self._instrument+"_note_bar"],
+                            store.COLOR_PALETTE[self._instrument + "_note_bar"],
                         )
                     )
             else:
@@ -189,7 +191,7 @@ class NoteBar(Renderable):
                 else:
                     self._surface = Surface((37.5, height))
                 # calculate the color of the note bar based on the velocity
-                self._surface.fill(store.COLOR_PALETTE[self._instrument+"_note_bar"])
+                self._surface.fill(store.COLOR_PALETTE[self._instrument + "_note_bar"])
                 self._surface.set_alpha(self._velocity * 2)
                 self._has_static_surface = True
 
@@ -203,15 +205,15 @@ class NoteBar(Renderable):
     @property
     def is_black(self):
         return self._note % 12 in [1, 3, 6, 8, 10]
-    
+
     @property
     def instrument(self):
         return self._instrument
-    
+
     @property
     def note(self):
         return self._note
-    
+
     @property
     def released(self):
         return self._release_time is not None

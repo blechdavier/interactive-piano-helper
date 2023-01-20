@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from math import pi, sin
 from queue import Queue
 from random import random
-from time import perf_counter, sleep, time
 
 import numpy as np
 import pyaudio

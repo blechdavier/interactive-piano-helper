@@ -7,7 +7,7 @@ from pygame import (
     QUIT,
     RESIZABLE,
     display,
-    init
+    init,
 )
 from pygame import event as ev
 from pygame import image

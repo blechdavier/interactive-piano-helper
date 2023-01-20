@@ -5,7 +5,7 @@ from os import path
 from queue import Queue
 from random import random
 from threading import Event, Thread, Timer
-from time import time
+from time import sleep, time
 
 from pygame import K_LEFT, K_RIGHT, KEYDOWN, KEYUP, MOUSEWHEEL
 from pygame import event as pygame_event
@@ -63,7 +63,7 @@ class Piano:
             self.scroll_x(
                 (screen.get_width() - self.width - self._horizontal_scroll) / 20
             )
-            
+
         for note_bar in self._note_bars:
             note_bar.render(screen)
         # not optimized but keeps the code simple so its fine
@@ -139,25 +139,28 @@ class Piano:
                 len(self._keys) % 12
             ]
         )
-        
+
     def add_note_bar(self, note: int, velocity: int, instrument: str):
         offsets = [0, 0.625, 1, 1.625, 2, 3, 3.625, 4, 4.625, 5, 5.625, 6]
         x = self._horizontal_scroll + offsets[note % 12] * 50 + floor(note / 12) * 350
         self._note_bars.append(NoteBar(note, x, velocity, instrument))
-        
+
     def release_note_bar(self, note: int, instrument: str):
         # release the note bar that is playing the note and instrument
         for note_bar in self._note_bars:
-            if note_bar.note == note and note_bar.instrument == instrument and not note_bar.released:
+            if (
+                note_bar.note == note
+                and note_bar.instrument == instrument
+                and not note_bar.released
+            ):
                 note_bar.release()
                 break
-            
+
     def release_all_note_bars(self, instrument: str):
         # release all the note bars that are playing the instrument
         for note_bar in self._note_bars:
             if note_bar.instrument == instrument:
                 note_bar.release()
-        
 
 
 class ComposingContext:
@@ -177,7 +180,7 @@ class ComposingContext:
         self._current_chord = 0
 
     def add_note(self, note: int):
-        # add this not to the list of the notes that are currently being played
+        # add this note to the list of the notes that are currently being played
         self._notes.append(note)
 
         # update the note frequency list
@@ -241,7 +244,7 @@ class ComposingContext:
             for instrument in self._auto_instruments:
                 instrument.tick(self)
             self._ticks += 1
-            
+
     def change_bpm(self, value: int):
         self._bpm += value
         store.app.ui[3].text = f"BPM: {self._bpm}"
@@ -332,19 +335,29 @@ class AutoChords(AutoInstrument):
             self._instrument_audio.play(
                 Note(60 + composing_context.key_notes[most_likely_chord], 80)
             )
-            store.app.piano.add_note_bar(60 + composing_context.key_notes[most_likely_chord], 80, "chords")
+            store.app.piano.add_note_bar(
+                60 + composing_context.key_notes[most_likely_chord], 80, "chords"
+            )
             self._instrument_audio.play(
                 Note(
                     60 + (composing_context.key_notes[(most_likely_chord + 2) % 7]), 60
                 )
             )
-            store.app.piano.add_note_bar(60 + (composing_context.key_notes[(most_likely_chord + 2) % 7]), 60, "chords")
+            store.app.piano.add_note_bar(
+                60 + (composing_context.key_notes[(most_likely_chord + 2) % 7]),
+                60,
+                "chords",
+            )
             self._instrument_audio.play(
                 Note(
                     60 + (composing_context.key_notes[(most_likely_chord + 4) % 7]), 55
                 )
             )
-            store.app.piano.add_note_bar(60 + (composing_context.key_notes[(most_likely_chord + 4) % 7]), 55, "chords")
+            store.app.piano.add_note_bar(
+                60 + (composing_context.key_notes[(most_likely_chord + 4) % 7]),
+                55,
+                "chords",
+            )
 
 
 class AutoBass(AutoInstrument):
@@ -372,8 +385,12 @@ class AutoBass(AutoInstrument):
                 Timer(
                     0.5, self._instrument_audio.release, args=(60 - 24 + root_note,)
                 ).start()
-                Timer(0.5, store.app.piano.release_note_bar, args=(60 - 24 + root_note, "bass")).start()
-                
+                Timer(
+                    0.5,
+                    store.app.piano.release_note_bar,
+                    args=(60 - 24 + root_note, "bass"),
+                ).start()
+
             # on other beats, 50% chance to play any note from the chord
             elif random() > 0.5:
                 if random() > 1 / 3:
@@ -389,7 +406,9 @@ class AutoBass(AutoInstrument):
                 Timer(
                     0.5, self._instrument_audio.release, args=(60 - 24 + note,)
                 ).start()
-                Timer(0.5, store.app.piano.release_note_bar, args=(60 - 24 + note, "bass")).start()
+                Timer(
+                    0.5, store.app.piano.release_note_bar, args=(60 - 24 + note, "bass")
+                ).start()
 
 
 class App:
@@ -402,13 +421,25 @@ class App:
         store.app = self
         store.audio_manager.start()
         self._ui = [
-            UiText(0, 0, 0, 0, "Press any key to start composing"), # Displays the key signature after the user has pressed a key
-            UiButton(0, -300, 0, 1, "<-", lambda: self._piano.scroll_x(50)), # Scroll the piano left
-            UiButton(-25, -300, 1, 1, "->", lambda:self._piano.scroll_x(-50)), # Scroll the piano right
-            UiText(0, 25, 0, 0, f"BPM: {self.composing_context._bpm}"), # Displays the BPM
-            UiButton(0, 50, 0, 0, "BPM +", lambda: self._composing_context.change_bpm(1)), # Increase the BPM
-            UiButton(0, 75, 0, 0, "BPM -", lambda: self._composing_context.change_bpm(-1)), # Decrease the BPM
-            ]
+            UiText(
+                0, 0, 0, 0, "Press any key to start composing"
+            ),  # Displays the key signature after the user has pressed a key
+            UiButton(
+                0, -300, 0, 1, "<-", lambda: self._piano.scroll_x(50)
+            ),  # Scroll the piano left
+            UiButton(
+                -25, -300, 1, 1, "->", lambda: self._piano.scroll_x(-50)
+            ),  # Scroll the piano right
+            UiText(
+                0, 25, 0, 0, f"BPM: {self.composing_context._bpm}"
+            ),  # Displays the BPM
+            UiButton(
+                0, 50, 0, 0, "BPM +", lambda: self._composing_context.change_bpm(1)
+            ),  # Increase the BPM
+            UiButton(
+                0, 75, 0, 0, "BPM -", lambda: self._composing_context.change_bpm(-1)
+            ),  # Decrease the BPM
+        ]
 
     def render(self, screen):
         screen.fill(store.COLOR_PALETTE["background"])
@@ -446,7 +477,7 @@ class App:
     @property
     def composing_context(self) -> ComposingContext:
         return self._composing_context
-    
+
     @property
     def ui(self):
         return self._ui
